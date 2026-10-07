@@ -1,0 +1,22 @@
+# Build output
+target/
+dist/
+*.class
+
+# Node
+node_modules/
+
+# Local environment
+.env
+.env.local
+
+# Local SQLite demo data
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# IDE
+.idea/
+.vscode/
+*.iml

@@ -1,0 +1,318 @@
+openapi: 3.0.3
+info:
+  title: Park Business Event Center API
+  version: 0.1.0
+  description: >
+    Client-agnostic management and ingestion API for the park business event center.
+    The admin front-end consumes the same public API as scripts or third-party clients.
+servers:
+  - url: /
+security:
+  - bearerAuth: []
+paths:
+  /api/auth/login:
+    post:
+      tags: [auth]
+      summary: Exchange username/password for a bearer token.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username: { type: string }
+                password: { type: string }
+      responses:
+        '200': { description: Issued token }
+        '401': { description: Invalid credentials }
+  /api/ingest/events:
+    post:
+      tags: [ingestion]
+      summary: Accept a raw event from a registered source.
+      security: []
+      parameters:
+        - { name: X-Source-Id, in: header, schema: { type: string } }
+        - { name: X-Source-Secret, in: header, schema: { type: string } }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '202': { description: Event accepted or deduplicated }
+        '400': { description: Validation error }
+        '401': { description: Unauthorized source }
+  /api/events:
+    get:
+      tags: [store-query]
+      summary: Conditionally search events.
+      parameters:
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: type, in: query, schema: { type: string } }
+        - { name: source, in: query, schema: { type: string } }
+        - { name: severity, in: query, schema: { type: string } }
+        - { name: location, in: query, schema: { type: string } }
+        - { name: page, in: query, schema: { type: integer, default: 0 } }
+        - { name: size, in: query, schema: { type: integer, default: 20 } }
+      responses:
+        '200': { description: Paged events }
+    post:
+      tags: [ingestion]
+      summary: Create a canonical event directly through the management API.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [eventType, occurredAt]
+              properties:
+                eventId: { type: string }
+                eventType: { type: string }
+                occurredAt: { type: string, format: date-time }
+                severity: { type: string }
+                location: { type: string }
+                sourceType: { type: string }
+                payload: { type: object, additionalProperties: true }
+      responses:
+        '201': { description: Event created }
+        '400': { description: Validation error }
+  /api/events/{eventId}:
+    get:
+      tags: [store-query]
+      summary: Get an event by id.
+      parameters:
+        - { name: eventId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Event }
+        '404': { description: Not found }
+  /api/events/{eventId}/traces:
+    get:
+      tags: [store-query]
+      summary: Get the full processing timeline of an event.
+      parameters:
+        - { name: eventId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Trace timeline }
+  /api/events/{eventId}/dispatch:
+    post:
+      tags: [dispatch]
+      summary: Trigger dispatch for a stored event.
+      parameters:
+        - { name: eventId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Dispatch result }
+  /api/events/{eventId}/redeliver:
+    post:
+      tags: [dispatch]
+      summary: Redeliver a failed event.
+      parameters:
+        - { name: eventId, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Dispatch result }
+  /api/sources:
+    get:
+      tags: [ingestion]
+      summary: List registered sources.
+      responses:
+        '200': { description: Sources }
+    post:
+      tags: [ingestion]
+      summary: Register a source and receive its secret.
+      responses:
+        '201': { description: Source created }
+  /api/event-types:
+    get:
+      tags: [event-type-registry]
+      summary: List business event type definitions.
+      parameters:
+        - { name: enabled, in: query, schema: { type: boolean } }
+      responses:
+        '200': { description: Event types }
+    post:
+      tags: [event-type-registry]
+      summary: Define a business event type and its payload schema.
+      responses:
+        '201': { description: Event type created }
+        '400': { description: Invalid schema }
+        '409': { description: Event type already exists }
+  /api/event-types/{type}:
+    get:
+      tags: [event-type-registry]
+      summary: Get a business event type definition.
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Event type }
+        '404': { description: Not found }
+    put:
+      tags: [event-type-registry]
+      summary: Update a business event type definition.
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Event type updated }
+        '400': { description: Invalid schema }
+        '404': { description: Not found }
+  /api/event-types/{type}/enable:
+    post:
+      tags: [event-type-registry]
+      summary: Enable an event type.
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Enabled }
+  /api/event-types/{type}/disable:
+    post:
+      tags: [event-type-registry]
+      summary: Disable an event type.
+      parameters:
+        - { name: type, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Disabled }
+  /api/subscriptions:
+    get:
+      tags: [subscription]
+      summary: List subscriptions.
+      responses:
+        '200': { description: Subscriptions }
+    post:
+      tags: [subscription]
+      summary: Create a subscription.
+      responses:
+        '201': { description: Subscription created }
+  /api/subscriptions/{id}:
+    get:
+      tags: [subscription]
+      summary: Get a subscription.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Subscription }
+    put:
+      tags: [subscription]
+      summary: Update a subscription.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Subscription updated }
+    delete:
+      tags: [subscription]
+      summary: Delete a subscription.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '204': { description: Deleted }
+  /api/subscriptions/{id}/enable:
+    post:
+      tags: [subscription]
+      summary: Enable a subscription.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Enabled }
+  /api/subscriptions/{id}/disable:
+    post:
+      tags: [subscription]
+      summary: Disable a subscription.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Disabled }
+  /api/deliveries:
+    get:
+      tags: [dispatch]
+      summary: List delivery attempts.
+      responses:
+        '200': { description: Deliveries }
+  /api/deliveries/dead-letters:
+    get:
+      tags: [dispatch]
+      summary: List dead-letter deliveries.
+      responses:
+        '200': { description: Dead letters }
+  /api/deliveries/{id}/redeliver:
+    post:
+      tags: [dispatch]
+      summary: Redeliver a delivery.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: Dispatch result }
+  /api/notification-channels:
+    get:
+      tags: [notification]
+      summary: List notification channels.
+      responses:
+        '200': { description: Channels }
+    post:
+      tags: [notification]
+      summary: Create a notification channel.
+      responses:
+        '201': { description: Channel created }
+  /api/notification-templates:
+    get:
+      tags: [notification]
+      summary: List notification templates.
+      responses:
+        '200': { description: Templates }
+    post:
+      tags: [notification]
+      summary: Create a notification template.
+      responses:
+        '201': { description: Template created }
+  /api/notifications:
+    get:
+      tags: [notification]
+      summary: List notification delivery records.
+      parameters:
+        - { name: eventId, in: query, schema: { type: string } }
+      responses:
+        '200': { description: Notification deliveries }
+  /api/notifications/{id}/resend:
+    post:
+      tags: [notification]
+      summary: Resend a failed notification.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: integer, format: int64 } }
+      responses:
+        '200': { description: Resend result }
+  /api/dashboard/statistics:
+    get:
+      tags: [dashboard]
+      summary: Aggregated statistics by dimension.
+      parameters:
+        - { name: dimension, in: query, schema: { type: string, enum: [TYPE, SOURCE, SEVERITY, LOCATION, TIME] } }
+        - { name: from, in: query, schema: { type: string, format: date-time } }
+        - { name: to, in: query, schema: { type: string, format: date-time } }
+        - { name: interval, in: query, schema: { type: string, enum: [hour, day] } }
+      responses:
+        '200': { description: Statistics }
+  /api/dashboard/situation:
+    get:
+      tags: [dashboard]
+      summary: Current active-alert situation.
+      parameters:
+        - { name: limit, in: query, schema: { type: integer, default: 50 } }
+      responses:
+        '200': { description: Situation }
+  /api/dashboard/stream:
+    get:
+      tags: [dashboard]
+      summary: Server-sent incremental situation updates.
+      responses:
+        '200':
+          description: SSE stream
+          content:
+            text/event-stream:
+              schema: { type: string }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

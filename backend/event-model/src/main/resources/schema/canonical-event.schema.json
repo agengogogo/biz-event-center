@@ -1,0 +1,63 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://park.example.com/schemas/canonical-event.schema.json",
+  "title": "CanonicalEvent",
+  "description": "The canonical park event envelope shared by ingestion, dispatch, storage, notification and dashboards.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "eventId",
+    "eventType",
+    "source",
+    "sourceType",
+    "occurredAt",
+    "severity",
+    "parkId"
+  ],
+  "properties": {
+    "eventId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Globally unique event identifier used for idempotent dedup."
+    },
+    "eventType": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Business event type / topic used for routing."
+    },
+    "source": {
+      "type": "string",
+      "description": "Identifier of the reporting source."
+    },
+    "sourceType": {
+      "type": "string",
+      "enum": ["IOT", "ACCESS", "ENERGY", "PARKING", "SECURITY", "THIRD_PARTY", "MANUAL"]
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "severity": {
+      "type": "string",
+      "enum": ["INFO", "WARNING", "MAJOR", "CRITICAL"]
+    },
+    "parkId": {
+      "type": "string",
+      "minLength": 1
+    },
+    "location": {
+      "type": "string"
+    },
+    "payload": {
+      "type": "object",
+      "description": "Free-form standardized payload."
+    },
+    "rawPayload": {
+      "type": "object",
+      "description": "Original source document preserved for traceability."
+    },
+    "traceId": {
+      "type": "string"
+    }
+  }
+}

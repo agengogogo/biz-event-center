@@ -1,0 +1,53 @@
+-- Event persistence, processing trace and audit tables (SQLite dialect).
+-- park_id is the tenant partition key and leads every retrieval index so that
+-- per-park queries stay isolated and index-friendly.
+
+CREATE TABLE events (
+    event_id    varchar(64) PRIMARY KEY,
+    event_type  varchar(128) NOT NULL,
+    source      varchar(128),
+    source_type varchar(32) NOT NULL,
+    occurred_at TIMESTAMP NOT NULL,
+    severity    varchar(16) NOT NULL,
+    park_id     varchar(64) NOT NULL,
+    location    varchar(256),
+    payload     text,
+    raw_payload text,
+    trace_id    varchar(128),
+    status      varchar(32) NOT NULL,
+    received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_events_park_time ON events (park_id, occurred_at DESC);
+CREATE INDEX idx_events_park_type_time ON events (park_id, event_type, occurred_at DESC);
+CREATE INDEX idx_events_park_severity_time ON events (park_id, severity, occurred_at DESC);
+CREATE INDEX idx_events_park_source_time ON events (park_id, source, occurred_at DESC);
+CREATE INDEX idx_events_source_park_time ON events (source, park_id, occurred_at DESC);
+
+CREATE TABLE event_trace (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    event_id    varchar(64) NOT NULL,
+    park_id     varchar(64) NOT NULL,
+    stage       varchar(32) NOT NULL,
+    status      varchar(32),
+    detail      varchar(1024),
+    occurred_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_event_trace_event ON event_trace (event_id, occurred_at);
+CREATE INDEX idx_event_trace_park ON event_trace (park_id, occurred_at DESC);
+
+CREATE TABLE audit_log (
+    id            INTEGER PRIMARY KEY AUTOINCREMENT,
+    actor         varchar(128),
+    action        varchar(64) NOT NULL,
+    resource_type varchar(64) NOT NULL,
+    resource_id   varchar(128),
+    park_id       varchar(64),
+    detail        varchar(2048),
+    occurred_at   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_audit_park_time ON audit_log (park_id, occurred_at DESC);
+CREATE INDEX idx_audit_resource ON audit_log (resource_type, resource_id);
