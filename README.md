@@ -110,3 +110,4 @@ cd frontend && npm run lint && npm run build
 
 Docker Compose 起 PostgreSQL/Redis/Kafka，后端以 `mvn -pl admin-api package` 产出可执行 jar 独立部署；
 前端 `npm run build` 产出静态资源，宿主任意静态服务器，按 `frontend/README.md` 将 `/api` 反向代理到后端。
+"#biz-event-center"
